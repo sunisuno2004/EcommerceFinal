@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Project Path="ECommerce.API/ECommerce.API.csproj" />
+  <Project Path="ECommerce.Business/ECommerce.Business.csproj" />
+  <Project Path="ECommerce.DataAccess/ECommerce.DataAccess.csproj" />
+  <Project Path="ECommerce.Tests/ECommerce.Tests.csproj" />
+</Solution>
