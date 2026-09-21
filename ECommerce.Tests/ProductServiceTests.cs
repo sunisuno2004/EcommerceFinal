@@ -1,4 +1,5 @@
-﻿using ECommerce.Business.Models;
+﻿using ECommerce.Business.Exceptions;
+using ECommerce.Business.Models;
 using ECommerce.Business.Repositories;
 using ECommerce.Business.Services;
 using Moq;
@@ -12,10 +13,12 @@ namespace ECommerce.Tests
 
         public ProductServiceTests()
         {
-            _repositoryMock = new Mock<IProductRepository>();
+            _repositoryMock =
+                new Mock<IProductRepository>();
 
             _productService =
-                new ProductService(_repositoryMock.Object);
+                new ProductService(
+                    _repositoryMock.Object);
         }
 
         [Fact]
@@ -53,7 +56,9 @@ namespace ECommerce.Tests
             // Assert
             Assert.NotNull(result);
             Assert.Equal(2, result.Count);
-            Assert.Equal("Laptop", result[0].Name);
+            Assert.Equal(
+                "Laptop",
+                result[0].Name);
         }
 
         [Fact]
@@ -69,33 +74,36 @@ namespace ECommerce.Tests
             };
 
             _repositoryMock
-                .Setup(r => r.GetProductByIdAsync(1))
+                .Setup(r =>
+                    r.GetProductByIdAsync(1))
                 .ReturnsAsync(product);
 
             // Act
             var result =
-                await _productService.GetProductByIdAsync(1);
+                await _productService
+                    .GetProductByIdAsync(1);
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal(1, result.Id);
-            Assert.Equal("Laptop", result.Name);
+            Assert.Equal(
+                "Laptop",
+                result.Name);
         }
 
         [Fact]
-        public async Task GetProductByIdAsync_ProductDoesNotExist_ReturnsNull()
+        public async Task GetProductByIdAsync_ProductDoesNotExist_ThrowsNotFoundException()
         {
             // Arrange
             _repositoryMock
-                .Setup(r => r.GetProductByIdAsync(999))
+                .Setup(r =>
+                    r.GetProductByIdAsync(999))
                 .ReturnsAsync((Product?)null);
 
-            // Act
-            var result =
-                await _productService.GetProductByIdAsync(999);
-
-            // Assert
-            Assert.Null(result);
+            // Act & Assert
+            await Assert.ThrowsAsync<NotFoundException>(
+                () => _productService
+                    .GetProductByIdAsync(999));
         }
 
         [Fact]
@@ -111,49 +119,78 @@ namespace ECommerce.Tests
             };
 
             _repositoryMock
-                .Setup(r => r.AddProductAsync(product))
+                .Setup(r =>
+                    r.AddProductAsync(product))
                 .ReturnsAsync(product);
 
             // Act
             var result =
-                await _productService.AddProductAsync(product);
+                await _productService
+                    .AddProductAsync(product);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal("Keyboard", result.Name);
-            Assert.Equal(2000, result.Price);
+            Assert.Equal(
+                "Keyboard",
+                result.Name);
+            Assert.Equal(
+                2000,
+                result.Price);
         }
 
         [Fact]
         public async Task DeleteProductAsync_ProductExists_ReturnsTrue()
         {
             // Arrange
+            var product = new Product
+            {
+                Id = 1,
+                Name = "Laptop",
+                Price = 50000,
+                StockQuantity = 10
+            };
+
             _repositoryMock
-                .Setup(r => r.DeleteProductAsync(1))
+                .Setup(r =>
+                    r.GetProductByIdAsync(1))
+                .ReturnsAsync(product);
+
+            _repositoryMock
+                .Setup(r =>
+                    r.DeleteProductAsync(1))
                 .ReturnsAsync(true);
 
             // Act
             var result =
-                await _productService.DeleteProductAsync(1);
+                await _productService
+                    .DeleteProductAsync(1);
 
             // Assert
             Assert.True(result);
+
+            _repositoryMock.Verify(
+                r => r.DeleteProductAsync(1),
+                Times.Once);
         }
 
         [Fact]
-        public async Task DeleteProductAsync_ProductDoesNotExist_ReturnsFalse()
+        public async Task DeleteProductAsync_ProductDoesNotExist_ThrowsNotFoundException()
         {
             // Arrange
             _repositoryMock
-                .Setup(r => r.DeleteProductAsync(999))
-                .ReturnsAsync(false);
+                .Setup(r =>
+                    r.GetProductByIdAsync(999))
+                .ReturnsAsync((Product?)null);
 
-            // Act
-            var result =
-                await _productService.DeleteProductAsync(999);
+            // Act & Assert
+            await Assert.ThrowsAsync<NotFoundException>(
+                () => _productService
+                    .DeleteProductAsync(999));
 
-            // Assert
-            Assert.False(result);
+            _repositoryMock.Verify(
+                r => r.DeleteProductAsync(
+                    It.IsAny<int>()),
+                Times.Never);
         }
     }
 }

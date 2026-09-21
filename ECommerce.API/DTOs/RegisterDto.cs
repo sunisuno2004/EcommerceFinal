@@ -6,15 +6,14 @@ namespace ECommerce.API.DTOs
     {
         [Required]
         [StringLength(100)]
-        public string FullName { get; set; } = string.Empty;
+        public required string FullName { get; set; }
 
         [Required]
         [EmailAddress]
-        [StringLength(150)]
-        public string Email { get; set; } = string.Empty;
+        public required string Email { get; set; }
 
         [Required]
         [MinLength(6)]
-        public string Password { get; set; } = string.Empty;
+        public required string Password { get; set; }
     }
 }

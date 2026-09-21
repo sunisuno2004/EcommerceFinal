@@ -5,6 +5,6 @@ namespace ECommerce.API.DTOs
     public class PaymentDto
     {
         [Required]
-        public string PaymentMethod { get; set; } = string.Empty;
+        public required string PaymentMethod { get; set; }
     }
 }

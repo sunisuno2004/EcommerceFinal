@@ -1,21 +1,18 @@
-﻿using ECommerce.Business.Models;
+﻿using ECommerce.Business.Exceptions;
+using ECommerce.Business.Models;
 using ECommerce.Business.Repositories;
 using ECommerce.Business.Security;
 
-
 namespace ECommerce.Business.Services
-
 {
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
         private readonly PasswordHasher _passwordHasher;
 
-
-
         public AuthService(
-    IUserRepository userRepository,
-    PasswordHasher passwordHasher)
+            IUserRepository userRepository,
+            PasswordHasher passwordHasher)
         {
             _userRepository = userRepository;
             _passwordHasher = passwordHasher;
@@ -28,28 +25,28 @@ namespace ECommerce.Business.Services
         {
             if (string.IsNullOrWhiteSpace(fullName))
             {
-                throw new ArgumentException(
+                throw new ValidationException(
                     "Full name is required.");
             }
 
             if (string.IsNullOrWhiteSpace(email))
             {
-                throw new ArgumentException(
+                throw new ValidationException(
                     "Email is required.");
             }
 
             if (string.IsNullOrWhiteSpace(password))
             {
-                throw new ArgumentException(
+                throw new ValidationException(
                     "Password is required.");
             }
 
             var existingUser =
                 await _userRepository.GetByEmailAsync(email);
 
-            if (existingUser != null)
+            if (existingUser is not null)
             {
-                throw new InvalidOperationException(
+                throw new ConflictException(
                     "A user with this email already exists.");
             }
 
@@ -65,33 +62,36 @@ namespace ECommerce.Business.Services
 
             return await _userRepository.AddUserAsync(user);
         }
-        public async Task<User?> LoginAsync(
-    string email,
-    string password)
+
+        public async Task<User> LoginAsync(
+            string email,
+            string password)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
-                throw new ArgumentException(
+                throw new ValidationException(
                     "Email is required.");
             }
 
             if (string.IsNullOrWhiteSpace(password))
             {
-                throw new ArgumentException(
+                throw new ValidationException(
                     "Password is required.");
             }
 
             var user =
                 await _userRepository.GetByEmailAsync(email);
 
-            if (user == null)
+            if (user is null)
             {
-                return null;
+                throw new UnauthorizedException(
+                    "Invalid email or password.");
             }
 
             if (!user.IsActive)
             {
-                return null;
+                throw new UnauthorizedException(
+                    "User account is inactive.");
             }
 
             var passwordValid =
@@ -101,7 +101,8 @@ namespace ECommerce.Business.Services
 
             if (!passwordValid)
             {
-                return null;
+                throw new UnauthorizedException(
+                    "Invalid email or password.");
             }
 
             return user;

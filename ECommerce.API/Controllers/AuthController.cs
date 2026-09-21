@@ -10,19 +10,23 @@ namespace ECommerce.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly ILogger<AuthController> _logger;
         private readonly JwtTokenService _jwtTokenService;
+        private readonly ILogger<AuthController> _logger;
 
         public AuthController(
-     IAuthService authService,
-     ILogger<AuthController> logger,
-     JwtTokenService jwtTokenService)
+            IAuthService authService,
+            JwtTokenService jwtTokenService,
+            ILogger<AuthController> logger)
         {
             _authService = authService;
-            _logger = logger;
             _jwtTokenService = jwtTokenService;
+            _logger = logger;
         }
 
+        // --------------------------------------------------
+        // REGISTER
+        // POST: /api/Auth/register
+        // --------------------------------------------------
         [HttpPost("register")]
         public async Task<IActionResult> Register(
             RegisterDto dto)
@@ -37,21 +41,25 @@ namespace ECommerce.API.Controllers
                 dto.Password);
 
             _logger.LogInformation(
-                "User registered successfully with ID {UserId}.",
+                "User {UserId} registered successfully.",
                 user.Id);
 
             return Ok(new
             {
                 message = "User registered successfully.",
                 userId = user.Id,
-                fullName = user.FullName,
-                email = user.Email
+                email = user.Email,
+                role = user.Role
             });
         }
 
+        // --------------------------------------------------
+        // LOGIN
+        // POST: /api/Auth/login
+        // --------------------------------------------------
         [HttpPost("login")]
-        
-        public async Task<IActionResult> Login(LoginDto dto)
+        public async Task<IActionResult> Login(
+            LoginDto dto)
         {
             _logger.LogInformation(
                 "Login attempt for {Email}.",
@@ -60,18 +68,6 @@ namespace ECommerce.API.Controllers
             var user = await _authService.LoginAsync(
                 dto.Email,
                 dto.Password);
-
-            if (user == null)
-            {
-                _logger.LogWarning(
-                    "Failed login attempt for {Email}.",
-                    dto.Email);
-
-                return Unauthorized(new
-                {
-                    message = "Invalid email or password."
-                });
-            }
 
             var token =
                 _jwtTokenService.GenerateToken(user);
@@ -82,11 +78,14 @@ namespace ECommerce.API.Controllers
 
             return Ok(new
             {
-                message = "Login successful.",
-                token = token,
-                userId = user.Id,
-                fullName = user.FullName,
-                email = user.Email
+                token,
+                user = new
+                {
+                    id = user.Id,
+                    fullName = user.FullName,
+                    email = user.Email,
+                    role = user.Role
+                }
             });
         }
     }

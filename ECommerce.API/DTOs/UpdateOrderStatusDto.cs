@@ -5,6 +5,6 @@ namespace ECommerce.API.DTOs
     public class UpdateOrderStatusDto
     {
         [Required]
-        public string Status { get; set; } = string.Empty;
+        public required string Status { get; set; }
     }
 }

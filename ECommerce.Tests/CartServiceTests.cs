@@ -1,4 +1,5 @@
-﻿using ECommerce.Business.Models;
+﻿using ECommerce.Business.Exceptions;
+using ECommerce.Business.Models;
 using ECommerce.Business.Repositories;
 using ECommerce.Business.Services;
 using Moq;
@@ -13,8 +14,11 @@ namespace ECommerce.Tests
 
         public CartServiceTests()
         {
-            _cartRepositoryMock = new Mock<ICartRepository>();
-            _productRepositoryMock = new Mock<IProductRepository>();
+            _cartRepositoryMock =
+                new Mock<ICartRepository>();
+
+            _productRepositoryMock =
+                new Mock<IProductRepository>();
 
             _cartService = new CartService(
                 _cartRepositoryMock.Object,
@@ -51,12 +55,16 @@ namespace ECommerce.Tests
             };
 
             _cartRepositoryMock
-                .Setup(r => r.AddToCartAsync(It.IsAny<CartItem>()))
+                .Setup(r => r.AddToCartAsync(
+                    It.IsAny<CartItem>()))
                 .ReturnsAsync(cartItem);
 
             // Act
             var result =
-                await _cartService.AddToCartAsync(1, 1, 2);
+                await _cartService.AddToCartAsync(
+                    1,
+                    1,
+                    2);
 
             // Assert
             Assert.NotNull(result);
@@ -69,8 +77,11 @@ namespace ECommerce.Tests
         public async Task AddToCartAsync_InvalidQuantity_ThrowsException()
         {
             // Act & Assert
-            await Assert.ThrowsAsync<ArgumentException>(
-                () => _cartService.AddToCartAsync(1, 1, 0));
+            await Assert.ThrowsAsync<ValidationException>(
+                () => _cartService.AddToCartAsync(
+                    1,
+                    1,
+                    0));
         }
 
         [Fact]
@@ -82,8 +93,11 @@ namespace ECommerce.Tests
                 .ReturnsAsync((Product?)null);
 
             // Act & Assert
-            await Assert.ThrowsAsync<KeyNotFoundException>(
-                () => _cartService.AddToCartAsync(1, 999, 2));
+            await Assert.ThrowsAsync<NotFoundException>(
+                () => _cartService.AddToCartAsync(
+                    1,
+                    999,
+                    2));
         }
 
         [Fact]
@@ -102,9 +116,16 @@ namespace ECommerce.Tests
                 .Setup(r => r.GetProductByIdAsync(1))
                 .ReturnsAsync(product);
 
+            _cartRepositoryMock
+                .Setup(r => r.GetCartItemAsync(1, 1))
+                .ReturnsAsync((CartItem?)null);
+
             // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                () => _cartService.AddToCartAsync(1, 1, 5));
+            await Assert.ThrowsAsync<ConflictException>(
+                () => _cartService.AddToCartAsync(
+                    1,
+                    1,
+                    5));
         }
 
         [Fact]
@@ -149,7 +170,16 @@ namespace ECommerce.Tests
                 StockQuantity = 10
             };
 
-            var cartItem = new CartItem
+            var existingCartItem = new CartItem
+            {
+                Id = 1,
+                UserId = 1,
+                ProductId = 1,
+                Quantity = 2,
+                UnitPrice = 50000
+            };
+
+            var updatedCartItem = new CartItem
             {
                 Id = 1,
                 UserId = 1,
@@ -163,12 +193,22 @@ namespace ECommerce.Tests
                 .ReturnsAsync(product);
 
             _cartRepositoryMock
-                .Setup(r => r.UpdateCartItemAsync(1, 1, 3))
-                .ReturnsAsync(cartItem);
+                .Setup(r => r.GetCartItemAsync(1, 1))
+                .ReturnsAsync(existingCartItem);
+
+            _cartRepositoryMock
+                .Setup(r => r.UpdateCartItemAsync(
+                    1,
+                    1,
+                    3))
+                .ReturnsAsync(updatedCartItem);
 
             // Act
             var result =
-                await _cartService.UpdateCartItemAsync(1, 1, 3);
+                await _cartService.UpdateCartItemAsync(
+                    1,
+                    1,
+                    3);
 
             // Assert
             Assert.NotNull(result);
@@ -179,13 +219,28 @@ namespace ECommerce.Tests
         public async Task RemoveFromCartAsync_ItemExists_ReturnsTrue()
         {
             // Arrange
+            var existingCartItem = new CartItem
+            {
+                Id = 1,
+                UserId = 1,
+                ProductId = 1,
+                Quantity = 2,
+                UnitPrice = 50000
+            };
+
+            _cartRepositoryMock
+                .Setup(r => r.GetCartItemAsync(1, 1))
+                .ReturnsAsync(existingCartItem);
+
             _cartRepositoryMock
                 .Setup(r => r.RemoveFromCartAsync(1, 1))
                 .ReturnsAsync(true);
 
             // Act
             var result =
-                await _cartService.RemoveFromCartAsync(1, 1);
+                await _cartService.RemoveFromCartAsync(
+                    1,
+                    1);
 
             // Assert
             Assert.True(result);

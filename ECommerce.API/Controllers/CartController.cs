@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using ECommerce.API.DTOs;
+using ECommerce.Business.Exceptions;
 using ECommerce.Business.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,52 +23,97 @@ namespace ECommerce.API.Controllers
             _logger = logger;
         }
 
+        // --------------------------------------------------
+        // GET LOGGED-IN USER ID FROM JWT
+        // --------------------------------------------------
         private int GetUserId()
         {
             var userIdClaim =
-                User.FindFirstValue(ClaimTypes.NameIdentifier);
+                User.FindFirstValue(
+                    ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrEmpty(userIdClaim))
+            if (string.IsNullOrWhiteSpace(userIdClaim))
             {
-                throw new UnauthorizedAccessException(
-                    "User ID not found in token.");
+                throw new UnauthorizedException(
+                    "User ID was not found in the authentication token.");
             }
 
-            return int.Parse(userIdClaim);
+            if (!int.TryParse(
+                    userIdClaim,
+                    out var userId))
+            {
+                throw new UnauthorizedException(
+                    "Invalid user ID in the authentication token.");
+            }
+
+            if (userId <= 0)
+            {
+                throw new UnauthorizedException(
+                    "Invalid user ID in the authentication token.");
+            }
+
+            return userId;
         }
 
-        // GET: api/cart
+        // --------------------------------------------------
+        // GET CART
+        // GET: api/Cart
+        // --------------------------------------------------
         [HttpGet]
         public async Task<IActionResult> GetCart()
         {
             var userId = GetUserId();
 
-            var cart = await _cartService.GetCartAsync(userId);
+            _logger.LogInformation(
+                "Getting cart for user {UserId}.",
+                userId);
+
+            var cart =
+                await _cartService.GetCartAsync(userId);
+
+            _logger.LogInformation(
+                "Retrieved {Count} cart items for user {UserId}.",
+                cart.Count,
+                userId);
 
             return Ok(cart);
         }
 
-        // POST: api/cart
+        // --------------------------------------------------
+        // ADD TO CART
+        // POST: api/Cart
+        // --------------------------------------------------
         [HttpPost]
         public async Task<IActionResult> AddToCart(
             AddToCartDto dto)
         {
             var userId = GetUserId();
 
-            var cartItem = await _cartService.AddToCartAsync(
-                userId,
+            _logger.LogInformation(
+                "Adding product {ProductId} to cart " +
+                "for user {UserId}.",
                 dto.ProductId,
-                dto.Quantity);
+                userId);
+
+            var cartItem =
+                await _cartService.AddToCartAsync(
+                    userId,
+                    dto.ProductId,
+                    dto.Quantity);
 
             _logger.LogInformation(
-                "Product {ProductId} added to cart for user {UserId}.",
+                "Product {ProductId} added to cart " +
+                "for user {UserId}.",
                 dto.ProductId,
                 userId);
 
             return Ok(cartItem);
         }
 
-        // PUT: api/cart/{productId}
+        // --------------------------------------------------
+        // UPDATE CART ITEM
+        // PUT: api/Cart/{productId}
+        // --------------------------------------------------
         [HttpPut("{productId}")]
         public async Task<IActionResult> UpdateCart(
             int productId,
@@ -75,53 +121,74 @@ namespace ECommerce.API.Controllers
         {
             var userId = GetUserId();
 
+            _logger.LogInformation(
+                "Updating product {ProductId} in cart " +
+                "for user {UserId}.",
+                productId,
+                userId);
+
             var cartItem =
                 await _cartService.UpdateCartItemAsync(
                     userId,
                     productId,
                     dto.Quantity);
 
-            if (cartItem == null)
-            {
-                return NotFound(new
-                {
-                    message = "Cart item not found."
-                });
-            }
+            _logger.LogInformation(
+                "Product {ProductId} updated in cart " +
+                "for user {UserId}.",
+                productId,
+                userId);
 
             return Ok(cartItem);
         }
 
-        // DELETE: api/cart/{productId}
+        // --------------------------------------------------
+        // REMOVE ITEM FROM CART
+        // DELETE: api/Cart/{productId}
+        // --------------------------------------------------
         [HttpDelete("{productId}")]
         public async Task<IActionResult> RemoveFromCart(
             int productId)
         {
             var userId = GetUserId();
 
-            var removed =
-                await _cartService.RemoveFromCartAsync(
-                    userId,
-                    productId);
+            _logger.LogInformation(
+                "Removing product {ProductId} from cart " +
+                "for user {UserId}.",
+                productId,
+                userId);
 
-            if (!removed)
-            {
-                return NotFound(new
-                {
-                    message = "Cart item not found."
-                });
-            }
+            await _cartService.RemoveFromCartAsync(
+                userId,
+                productId);
+
+            _logger.LogInformation(
+                "Product {ProductId} removed from cart " +
+                "for user {UserId}.",
+                productId,
+                userId);
 
             return NoContent();
         }
 
-        // DELETE: api/cart
+        // --------------------------------------------------
+        // CLEAR CART
+        // DELETE: api/Cart
+        // --------------------------------------------------
         [HttpDelete]
         public async Task<IActionResult> ClearCart()
         {
             var userId = GetUserId();
 
+            _logger.LogInformation(
+                "Clearing cart for user {UserId}.",
+                userId);
+
             await _cartService.ClearCartAsync(userId);
+
+            _logger.LogInformation(
+                "Cart cleared for user {UserId}.",
+                userId);
 
             return NoContent();
         }

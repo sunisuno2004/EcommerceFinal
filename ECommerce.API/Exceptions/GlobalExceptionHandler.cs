@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using ECommerce.Business.Exceptions;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ECommerce.API.Exceptions
@@ -14,40 +15,78 @@ namespace ECommerce.API.Exceptions
         }
 
         public async ValueTask<bool> TryHandleAsync(
-    HttpContext httpContext,
-    Exception exception,
-    CancellationToken cancellationToken)
+            HttpContext httpContext,
+            Exception exception,
+            CancellationToken cancellationToken)
         {
-            _logger.LogError(
-                exception,
-                "An unexpected error occurred.");
-
-            var statusCode = exception switch
+            var (statusCode, title) = exception switch
             {
-                ArgumentException => StatusCodes.Status400BadRequest,
-                InvalidOperationException => StatusCodes.Status400BadRequest,
-                _ => StatusCodes.Status500InternalServerError
+                ValidationException =>
+                    (
+                        StatusCodes.Status400BadRequest,
+                        "Validation Error"
+                    ),
+
+                UnauthorizedException =>
+                    (
+                        StatusCodes.Status401Unauthorized,
+                        "Unauthorized"
+                    ),
+
+                NotFoundException =>
+                    (
+                        StatusCodes.Status404NotFound,
+                        "Resource Not Found"
+                    ),
+
+                ConflictException =>
+                    (
+                        StatusCodes.Status409Conflict,
+                        "Conflict"
+                    ),
+
+                _ =>
+                    (
+                        StatusCodes.Status500InternalServerError,
+                        "Internal Server Error"
+                    )
             };
 
-            var title = exception switch
+            if (statusCode ==
+                StatusCodes.Status500InternalServerError)
             {
-                ArgumentException => "Invalid request.",
-                InvalidOperationException => "Operation cannot be completed.",
-                _ => "An unexpected error occurred."
-            };
+                _logger.LogError(
+                    exception,
+                    "An unhandled exception occurred.");
+            }
+            else
+            {
+                _logger.LogWarning(
+                    exception,
+                    "Request failed with status code {StatusCode}.",
+                    statusCode);
+            }
 
             var problemDetails = new ProblemDetails
             {
                 Status = statusCode,
                 Title = title,
-                Detail = exception.Message
+
+                Detail =
+                    statusCode ==
+                    StatusCodes.Status500InternalServerError
+                        ? "An unexpected error occurred."
+                        : exception.Message,
+
+                Instance = httpContext.Request.Path
             };
 
             httpContext.Response.StatusCode = statusCode;
+            httpContext.Response.ContentType =
+                "application/problem+json";
 
             await httpContext.Response.WriteAsJsonAsync(
-                problemDetails,
-                cancellationToken);
+    problemDetails);
 
             return true;
         }

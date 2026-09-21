@@ -11,7 +11,7 @@ namespace ECommerce.Business.Repositories
         Task<Product> AddProductAsync(Product product);
 
         Task<Product?> UpdateProductAsync(int id, Product product);
-
+        Task<List<Product>> AddProductsAsync(List<Product> products);
         Task<bool> DeleteProductAsync(int id);
     }
 }

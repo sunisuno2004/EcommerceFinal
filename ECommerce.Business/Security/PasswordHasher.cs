@@ -13,19 +13,24 @@ namespace ECommerce.Business.Security
             if (string.IsNullOrWhiteSpace(password))
             {
                 throw new ArgumentException(
-                    "Password is required.");
+                    "Password is required.",
+                    nameof(password));
             }
 
-            byte[] salt = RandomNumberGenerator.GetBytes(SaltSize);
+            byte[] salt =
+                RandomNumberGenerator.GetBytes(SaltSize);
 
-            byte[] hash = Rfc2898DeriveBytes.Pbkdf2(
-                password,
-                salt,
-                Iterations,
-                HashAlgorithmName.SHA256,
-                HashSize);
+            byte[] hash =
+                Rfc2898DeriveBytes.Pbkdf2(
+                    password,
+                    salt,
+                    Iterations,
+                    HashAlgorithmName.SHA256,
+                    HashSize);
 
-            return $"{Iterations}.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(hash)}";
+            return $"{Iterations}." +
+                   $"{Convert.ToBase64String(salt)}." +
+                   $"{Convert.ToBase64String(hash)}";
         }
 
         public bool VerifyPassword(
@@ -45,7 +50,9 @@ namespace ECommerce.Business.Security
                 return false;
             }
 
-            if (!int.TryParse(parts[0], out int iterations))
+            if (!int.TryParse(
+                    parts[0],
+                    out int iterations))
             {
                 return false;
             }
@@ -53,10 +60,12 @@ namespace ECommerce.Business.Security
             try
             {
                 byte[] salt =
-                    Convert.FromBase64String(parts[1]);
+                    Convert.FromBase64String(
+                        parts[1]);
 
                 byte[] expectedHash =
-                    Convert.FromBase64String(parts[2]);
+                    Convert.FromBase64String(
+                        parts[2]);
 
                 byte[] actualHash =
                     Rfc2898DeriveBytes.Pbkdf2(
@@ -66,9 +75,10 @@ namespace ECommerce.Business.Security
                         HashAlgorithmName.SHA256,
                         expectedHash.Length);
 
-                return CryptographicOperations.FixedTimeEquals(
-                    actualHash,
-                    expectedHash);
+                return CryptographicOperations
+                    .FixedTimeEquals(
+                        actualHash,
+                        expectedHash);
             }
             catch
             {

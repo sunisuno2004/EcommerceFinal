@@ -1,4 +1,5 @@
-﻿using ECommerce.Business.Models;
+﻿using ECommerce.Business.Exceptions;
+using ECommerce.Business.Models;
 using ECommerce.Business.Repositories;
 
 namespace ECommerce.Business.Services
@@ -16,35 +17,46 @@ namespace ECommerce.Business.Services
             _productRepository = productRepository;
         }
 
+        // --------------------------------------------------
+        // GET CART
+        // --------------------------------------------------
         public async Task<List<CartItem>> GetCartAsync(int userId)
         {
+            if (userId <= 0)
+            {
+                throw new ValidationException(
+                    "User ID must be greater than zero.");
+            }
+
+            // Empty cart is valid.
+            // Repository should return an empty list.
             return await _cartRepository.GetCartAsync(userId);
         }
 
+        // --------------------------------------------------
+        // ADD TO CART
+        // --------------------------------------------------
         public async Task<CartItem> AddToCartAsync(
             int userId,
             int productId,
             int quantity)
         {
+            ValidateIds(userId, productId);
+
             if (quantity <= 0)
             {
-                throw new ArgumentException(
+                throw new ValidationException(
                     "Quantity must be greater than zero.");
             }
 
             var product =
-                await _productRepository.GetProductByIdAsync(productId);
+                await _productRepository.GetProductByIdAsync(
+                    productId);
 
-            if (product == null)
+            if (product is null)
             {
-                throw new KeyNotFoundException(
-                    "Product not found.");
-            }
-
-            if (product.StockQuantity < quantity)
-            {
-                throw new InvalidOperationException(
-                    "Insufficient stock.");
+                throw new NotFoundException(
+                    $"Product with ID {productId} was not found.");
             }
 
             var existingItem =
@@ -52,15 +64,44 @@ namespace ECommerce.Business.Services
                     userId,
                     productId);
 
-            if (existingItem != null)
+            // --------------------------------------------------
+            // PRODUCT ALREADY EXISTS IN CART
+            // --------------------------------------------------
+            if (existingItem is not null)
             {
-                existingItem.Quantity += quantity;
+                var newQuantity =
+                    existingItem.Quantity + quantity;
 
-                return await _cartRepository.UpdateCartItemAsync(
-                    userId,
-                    productId,
-                    existingItem.Quantity)
-                    ?? existingItem;
+                if (newQuantity > product.StockQuantity)
+                {
+                    throw new ConflictException(
+                        $"Only {product.StockQuantity} item(s) " +
+                        $"are available for product '{product.Name}'.");
+                }
+
+                var updatedItem =
+                    await _cartRepository.UpdateCartItemAsync(
+                        userId,
+                        productId,
+                        newQuantity);
+
+                if (updatedItem is null)
+                {
+                    throw new NotFoundException(
+                        "Cart item could not be found after update.");
+                }
+
+                return updatedItem;
+            }
+
+            // --------------------------------------------------
+            // NEW CART ITEM
+            // --------------------------------------------------
+            if (quantity > product.StockQuantity)
+            {
+                throw new ConflictException(
+                    $"Only {product.StockQuantity} item(s) " +
+                    $"are available for product '{product.Name}'.");
             }
 
             var cartItem = new CartItem
@@ -71,53 +112,138 @@ namespace ECommerce.Business.Services
                 UnitPrice = product.Price
             };
 
-            return await _cartRepository.AddToCartAsync(cartItem);
+            return await _cartRepository.AddToCartAsync(
+                cartItem);
         }
 
-        public async Task<CartItem?> UpdateCartItemAsync(
+        // --------------------------------------------------
+        // UPDATE CART ITEM
+        // --------------------------------------------------
+        public async Task<CartItem> UpdateCartItemAsync(
             int userId,
             int productId,
             int quantity)
         {
+            ValidateIds(userId, productId);
+
             if (quantity <= 0)
             {
-                throw new ArgumentException(
+                throw new ValidationException(
                     "Quantity must be greater than zero.");
             }
 
             var product =
-                await _productRepository.GetProductByIdAsync(productId);
+                await _productRepository.GetProductByIdAsync(
+                    productId);
 
-            if (product == null)
+            if (product is null)
             {
-                throw new KeyNotFoundException(
-                    "Product not found.");
+                throw new NotFoundException(
+                    $"Product with ID {productId} was not found.");
             }
 
-            if (product.StockQuantity < quantity)
+            var existingItem =
+                await _cartRepository.GetCartItemAsync(
+                    userId,
+                    productId);
+
+            if (existingItem is null)
             {
-                throw new InvalidOperationException(
-                    "Insufficient stock.");
+                throw new NotFoundException(
+                    $"Product with ID {productId} " +
+                    "was not found in the cart.");
             }
 
-            return await _cartRepository.UpdateCartItemAsync(
-                userId,
-                productId,
-                quantity);
+            if (quantity > product.StockQuantity)
+            {
+                throw new ConflictException(
+                    $"Only {product.StockQuantity} item(s) " +
+                    $"are available for product '{product.Name}'.");
+            }
+
+            var updatedItem =
+                await _cartRepository.UpdateCartItemAsync(
+                    userId,
+                    productId,
+                    quantity);
+
+            if (updatedItem is null)
+            {
+                throw new NotFoundException(
+                    $"Product with ID {productId} " +
+                    "was not found in the cart.");
+            }
+
+            return updatedItem;
         }
 
+        // --------------------------------------------------
+        // REMOVE FROM CART
+        // --------------------------------------------------
         public async Task<bool> RemoveFromCartAsync(
             int userId,
             int productId)
         {
-            return await _cartRepository.RemoveFromCartAsync(
-                userId,
-                productId);
+            ValidateIds(userId, productId);
+
+            var existingItem =
+                await _cartRepository.GetCartItemAsync(
+                    userId,
+                    productId);
+
+            if (existingItem is null)
+            {
+                throw new NotFoundException(
+                    $"Product with ID {productId} " +
+                    "was not found in the cart.");
+            }
+
+            var removed =
+                await _cartRepository.RemoveFromCartAsync(
+                    userId,
+                    productId);
+
+            if (!removed)
+            {
+                throw new InvalidOperationException(
+                    "The cart item could not be removed.");
+            }
+
+            return true;
         }
 
+        // --------------------------------------------------
+        // CLEAR CART
+        // --------------------------------------------------
         public async Task ClearCartAsync(int userId)
         {
+            if (userId <= 0)
+            {
+                throw new ValidationException(
+                    "User ID must be greater than zero.");
+            }
+
             await _cartRepository.ClearCartAsync(userId);
+        }
+
+        // --------------------------------------------------
+        // COMMON ID VALIDATION
+        // --------------------------------------------------
+        private static void ValidateIds(
+            int userId,
+            int productId)
+        {
+            if (userId <= 0)
+            {
+                throw new ValidationException(
+                    "User ID must be greater than zero.");
+            }
+
+            if (productId <= 0)
+            {
+                throw new ValidationException(
+                    "Product ID must be greater than zero.");
+            }
         }
     }
 }

@@ -1,0 +1,150 @@
+.products-page {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 40px 25px;
+}
+
+.products-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.products-header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+
+.products-header p {
+  color: #666;
+  margin-top: 8px;
+}
+
+.product-count {
+  background: #222;
+  color: white;
+  padding: 10px 18px;
+  border-radius: 20px;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fill, minmax(260px, 1fr));
+  gap: 22px;
+}
+
+.product-card {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px
+    rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+}
+
+.product-image-placeholder {
+  height: 150px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #eeeeee;
+  font-size: 55px;
+}
+
+.product-info {
+  padding: 20px;
+}
+
+.product-info h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.product-description {
+  color: #666;
+  min-height: 45px;
+  font-size: 14px;
+}
+
+.product-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.product-price {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.in-stock {
+  color: #137333;
+  font-size: 13px;
+}
+
+.out-of-stock {
+  color: #c62828;
+  font-size: 13px;
+}
+
+.products-message {
+  text-align: center;
+  margin-top: 100px;
+  font-size: 18px;
+}
+
+.products-message button {
+  padding: 10px 20px;
+  cursor: pointer;
+}
+.product-search {
+  width: 300px;
+  max-width: 100%;
+  padding: 10px 12px;
+  margin-top: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 15px;
+}
+.products-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.view-cart-button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.add-cart-button {
+  width: 100%;
+  margin-top: 15px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.add-cart-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.cart-message {
+  margin: 15px 0 20px;
+  padding: 12px;
+  border-radius: 6px;
+  background: #eef6ff;
+}

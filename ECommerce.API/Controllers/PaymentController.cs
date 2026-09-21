@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using ECommerce.API.DTOs;
+using ECommerce.Business.Exceptions;
 using ECommerce.Business.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,28 +14,54 @@ namespace ECommerce.API.Controllers
     {
         private readonly IPaymentService _paymentService;
         private readonly IOrderService _orderService;
+        private readonly ILogger<PaymentController> _logger;
 
         public PaymentController(
             IPaymentService paymentService,
-            IOrderService orderService)
+            IOrderService orderService,
+            ILogger<PaymentController> logger)
         {
             _paymentService = paymentService;
             _orderService = orderService;
+            _logger = logger;
         }
 
+        // --------------------------------------------------
+        // GET LOGGED-IN USER ID FROM JWT
+        // --------------------------------------------------
         private int GetUserId()
         {
             var userIdClaim =
                 User.FindFirstValue(
                     ClaimTypes.NameIdentifier);
 
-            if (string.IsNullOrEmpty(userIdClaim))
-                throw new UnauthorizedAccessException(
-                    "User ID not found.");
+            if (string.IsNullOrWhiteSpace(userIdClaim))
+            {
+                throw new UnauthorizedException(
+                    "User ID was not found in the authentication token.");
+            }
 
-            return int.Parse(userIdClaim);
+            if (!int.TryParse(
+                    userIdClaim,
+                    out var userId))
+            {
+                throw new UnauthorizedException(
+                    "Invalid user ID in the authentication token.");
+            }
+
+            if (userId <= 0)
+            {
+                throw new UnauthorizedException(
+                    "Invalid user ID in the authentication token.");
+            }
+
+            return userId;
         }
 
+        // --------------------------------------------------
+        // PROCESS PAYMENT
+        // POST: api/Payment/{orderId}
+        // --------------------------------------------------
         [HttpPost("{orderId}")]
         public async Task<IActionResult> MakePayment(
             int orderId,
@@ -42,26 +69,27 @@ namespace ECommerce.API.Controllers
         {
             var userId = GetUserId();
 
-            // Verify that the order belongs to this user
+            _logger.LogInformation(
+                "Payment attempt for order {OrderId} " +
+                "by user {UserId}.",
+                orderId,
+                userId);
+
+            // This also verifies that the order
+            // belongs to the logged-in user.
             var order =
                 await _orderService.GetOrderAsync(
                     orderId,
                     userId);
 
-            if (order == null)
+            if (!string.Equals(
+                    order.Status,
+                    "Pending",
+                    StringComparison.OrdinalIgnoreCase))
             {
-                return NotFound(new
-                {
-                    message = "Order not found."
-                });
-            }
-
-            if (order.Status != "Pending")
-            {
-                return BadRequest(new
-                {
-                    message = "Payment cannot be processed for this order."
-                });
+                throw new ConflictException(
+                    "Payment cannot be processed because " +
+                    "the order is not in Pending status.");
             }
 
             var success =
@@ -71,23 +99,25 @@ namespace ECommerce.API.Controllers
 
             if (!success)
             {
-                return BadRequest(new
-                {
-                    message = "Payment failed."
-                });
+                throw new InvalidOperationException(
+                    "Payment processing failed.");
             }
 
-            // Payment successful
-            await _orderService.UpdateOrderStatusAsync(
-                orderId,
-                "Confirmed");
+            var updatedOrder =
+                await _orderService.UpdateOrderStatusAsync(
+                    orderId,
+                    "Confirmed");
+
+            _logger.LogInformation(
+                "Payment completed successfully for order {OrderId}.",
+                orderId);
 
             return Ok(new
             {
                 message = "Payment successful.",
-                orderId = orderId,
+                orderId = updatedOrder.Id,
                 paymentMethod = dto.PaymentMethod,
-                status = "Confirmed"
+                status = updatedOrder.Status
             });
         }
     }

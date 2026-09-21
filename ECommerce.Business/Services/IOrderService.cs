@@ -8,13 +8,13 @@ namespace ECommerce.Business.Services
 
         Task<List<Order>> GetMyOrdersAsync(int userId);
 
-        Task<Order?> GetOrderAsync(
+        Task<Order> GetOrderAsync(
             int orderId,
             int userId);
 
         Task<List<Order>> GetAllOrdersAsync();
 
-        Task<Order?> UpdateOrderStatusAsync(
+        Task<Order> UpdateOrderStatusAsync(
             int orderId,
             string status);
     }

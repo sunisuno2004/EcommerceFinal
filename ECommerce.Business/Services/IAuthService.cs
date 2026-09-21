@@ -9,8 +9,6 @@ namespace ECommerce.Business.Services
             string email,
             string password);
 
-        Task<User?> LoginAsync(
-            string email,
-            string password);
+        Task<User> LoginAsync(string email, string password);
     }
 }

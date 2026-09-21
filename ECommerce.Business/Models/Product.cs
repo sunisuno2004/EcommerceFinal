@@ -8,10 +8,10 @@ namespace ECommerce.Business.Models
 
         [Required]
         [StringLength(100)]
-        public string Name { get; set; } = string.Empty;
+        public required string Name { get; set; }
 
         [StringLength(500)]
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
         [Range(0.01, 999999999)]
         public decimal Price { get; set; }
@@ -19,8 +19,10 @@ namespace ECommerce.Business.Models
         [Range(0, int.MaxValue)]
         public int StockQuantity { get; set; }
 
-        public bool IsActive { get; set; } = true;
+        public DateTime CreatedAt { get; set; }
+            = DateTime.UtcNow;
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public bool IsActive { get; set; }
+            = true;
     }
 }

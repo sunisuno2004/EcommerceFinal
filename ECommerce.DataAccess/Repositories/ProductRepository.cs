@@ -53,7 +53,13 @@ namespace ECommerce.DataAccess.Repositories
 
             return existingProduct;
         }
+        public async Task<List<Product>> AddProductsAsync(List<Product> products)
+        {
+            _context.Products.AddRange(products);
+            await _context.SaveChangesAsync();
 
+            return products;
+        }
         public async Task<bool> DeleteProductAsync(int id)
         {
             var product = await _context.Products.FindAsync(id);

@@ -7,6 +7,7 @@ using ECommerce.DataAccess.Data;
 using ECommerce.DataAccess.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Text.Json.Serialization;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,7 +15,12 @@ var builder = WebApplication.CreateBuilder(args);
 // --------------------------------------------------
 // Controllers
 // --------------------------------------------------
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler =
+            ReferenceHandler.IgnoreCycles;
+    });
 
 // --------------------------------------------------
 // Database
@@ -55,7 +61,7 @@ builder.Services.AddAuthentication("Bearer")
 // --------------------------------------------------
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
-
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // --------------------------------------------------
 // Inventory
 // --------------------------------------------------
@@ -85,7 +91,8 @@ builder.Services.AddScoped<JwtTokenService>();
 // Payment
 // --------------------------------------------------
 builder.Services.AddScoped<IPaymentService, PaymentService>();
-
+builder.Services.AddScoped<IProductBatchRepository, ProductBatchRepository>();
+builder.Services.AddScoped<IProductBatchService, ProductBatchService>();
 // --------------------------------------------------
 // Global Exception Handling
 // --------------------------------------------------
@@ -98,7 +105,16 @@ builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 // ==================================================
 // BUILD APPLICATION
 // ==================================================
@@ -118,12 +134,14 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseCors("FrontendPolicy");
 }
 
 // --------------------------------------------------
 // HTTPS
 // --------------------------------------------------
 app.UseHttpsRedirection();
+
 
 // --------------------------------------------------
 // Authentication

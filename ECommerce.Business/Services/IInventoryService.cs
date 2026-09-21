@@ -4,13 +4,14 @@ namespace ECommerce.Business.Services
 {
     public interface IInventoryService
     {
-        Task<Product?> GetStockAsync(int productId);
+        Task<Product> GetStockAsync(
+            int productId);
 
-        Task<Product?> AddStockAsync(
+        Task<Product> AddStockAsync(
             int productId,
             int quantity);
 
-        Task<Product?> RemoveStockAsync(
+        Task<Product> RemoveStockAsync(
             int productId,
             int quantity);
     }

@@ -11,7 +11,7 @@ namespace ECommerce.Business.Services
             int productId,
             int quantity);
 
-        Task<CartItem?> UpdateCartItemAsync(
+        Task<CartItem> UpdateCartItemAsync(
             int userId,
             int productId,
             int quantity);

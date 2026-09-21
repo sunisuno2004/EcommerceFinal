@@ -1,4 +1,5 @@
-﻿using ECommerce.Business.Models;
+﻿using ECommerce.Business.Exceptions;
+using ECommerce.Business.Models;
 using ECommerce.Business.Repositories;
 using ECommerce.Business.Security;
 using ECommerce.Business.Services;
@@ -14,9 +15,11 @@ namespace ECommerce.Tests
 
         public AuthServiceTests()
         {
-            _userRepositoryMock = new Mock<IUserRepository>();
+            _userRepositoryMock =
+                new Mock<IUserRepository>();
 
-            _passwordHasher = new PasswordHasher();
+            _passwordHasher =
+                new PasswordHasher();
 
             _authService = new AuthService(
                 _userRepositoryMock.Object,
@@ -27,21 +30,14 @@ namespace ECommerce.Tests
         public async Task RegisterAsync_NewUser_ReturnsUser()
         {
             // Arrange
-            var user = new User
-            {
-                Id = 1,
-                FullName = "John",
-                Email = "john@gmail.com",
-                Role = "Customer",
-                IsActive = true
-            };
-
             _userRepositoryMock
-                .Setup(r => r.GetByEmailAsync("john@gmail.com"))
+                .Setup(r =>
+                    r.GetByEmailAsync("john@gmail.com"))
                 .ReturnsAsync((User?)null);
 
             _userRepositoryMock
-                .Setup(r => r.AddUserAsync(It.IsAny<User>()))
+                .Setup(r =>
+                    r.AddUserAsync(It.IsAny<User>()))
                 .ReturnsAsync((User newUser) =>
                 {
                     newUser.Id = 1;
@@ -50,21 +46,26 @@ namespace ECommerce.Tests
                 });
 
             // Act
-            var result = await _authService.RegisterAsync(
-                "John",
-                "john@gmail.com",
-                "password123");
+            var result =
+                await _authService.RegisterAsync(
+                    "John",
+                    "john@gmail.com",
+                    "password123");
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal("John", result.FullName);
-            Assert.Equal("john@gmail.com", result.Email);
-            Assert.Equal("Customer", result.Role);
+            Assert.Equal(
+                "john@gmail.com",
+                result.Email);
+            Assert.Equal(
+                "Customer",
+                result.Role);
             Assert.NotEmpty(result.PasswordHash);
         }
 
         [Fact]
-        public async Task RegisterAsync_ExistingEmail_ThrowsException()
+        public async Task RegisterAsync_ExistingEmail_ThrowsConflictException()
         {
             // Arrange
             var existingUser = new User
@@ -72,15 +73,17 @@ namespace ECommerce.Tests
                 Id = 1,
                 FullName = "Existing User",
                 Email = "john@gmail.com",
+                PasswordHash = "hashed-password",
                 IsActive = true
             };
 
             _userRepositoryMock
-                .Setup(r => r.GetByEmailAsync("john@gmail.com"))
+                .Setup(r =>
+                    r.GetByEmailAsync("john@gmail.com"))
                 .ReturnsAsync(existingUser);
 
             // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<ConflictException>(
                 () => _authService.RegisterAsync(
                     "John",
                     "john@gmail.com",
@@ -92,7 +95,8 @@ namespace ECommerce.Tests
         {
             // Arrange
             var passwordHash =
-                _passwordHasher.HashPassword("password123");
+                _passwordHasher.HashPassword(
+                    "password123");
 
             var user = new User
             {
@@ -105,26 +109,31 @@ namespace ECommerce.Tests
             };
 
             _userRepositoryMock
-                .Setup(r => r.GetByEmailAsync("john@gmail.com"))
+                .Setup(r =>
+                    r.GetByEmailAsync("john@gmail.com"))
                 .ReturnsAsync(user);
 
             // Act
-            var result = await _authService.LoginAsync(
-                "john@gmail.com",
-                "password123");
+            var result =
+                await _authService.LoginAsync(
+                    "john@gmail.com",
+                    "password123");
 
             // Assert
             Assert.NotNull(result);
             Assert.Equal(1, result.Id);
-            Assert.Equal("john@gmail.com", result.Email);
+            Assert.Equal(
+                "john@gmail.com",
+                result.Email);
         }
 
         [Fact]
-        public async Task LoginAsync_InvalidPassword_ReturnsNull()
+        public async Task LoginAsync_InvalidPassword_ThrowsUnauthorizedException()
         {
             // Arrange
             var passwordHash =
-                _passwordHasher.HashPassword("password123");
+                _passwordHasher.HashPassword(
+                    "password123");
 
             var user = new User
             {
@@ -137,37 +146,36 @@ namespace ECommerce.Tests
             };
 
             _userRepositoryMock
-                .Setup(r => r.GetByEmailAsync("john@gmail.com"))
+                .Setup(r =>
+                    r.GetByEmailAsync("john@gmail.com"))
                 .ReturnsAsync(user);
 
-            // Act
-            var result = await _authService.LoginAsync(
-                "john@gmail.com",
-                "wrong-password");
-
-            // Assert
-            Assert.Null(result);
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedException>(
+                () => _authService.LoginAsync(
+                    "john@gmail.com",
+                    "wrong-password"));
         }
 
         [Fact]
-        public async Task LoginAsync_UserDoesNotExist_ReturnsNull()
+        public async Task LoginAsync_UserDoesNotExist_ThrowsUnauthorizedException()
         {
             // Arrange
             _userRepositoryMock
-                .Setup(r => r.GetByEmailAsync("unknown@gmail.com"))
+                .Setup(r =>
+                    r.GetByEmailAsync(
+                        "unknown@gmail.com"))
                 .ReturnsAsync((User?)null);
 
-            // Act
-            var result = await _authService.LoginAsync(
-                "unknown@gmail.com",
-                "password123");
-
-            // Assert
-            Assert.Null(result);
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedException>(
+                () => _authService.LoginAsync(
+                    "unknown@gmail.com",
+                    "password123"));
         }
 
         [Fact]
-        public async Task LoginAsync_InactiveUser_ReturnsNull()
+        public async Task LoginAsync_InactiveUser_ThrowsUnauthorizedException()
         {
             // Arrange
             var user = new User
@@ -181,16 +189,15 @@ namespace ECommerce.Tests
             };
 
             _userRepositoryMock
-                .Setup(r => r.GetByEmailAsync("john@gmail.com"))
+                .Setup(r =>
+                    r.GetByEmailAsync("john@gmail.com"))
                 .ReturnsAsync(user);
 
-            // Act
-            var result = await _authService.LoginAsync(
-                "john@gmail.com",
-                "password123");
-
-            // Assert
-            Assert.Null(result);
+            // Act & Assert
+            await Assert.ThrowsAsync<UnauthorizedException>(
+                () => _authService.LoginAsync(
+                    "john@gmail.com",
+                    "password123"));
         }
     }
 }

@@ -8,15 +8,11 @@ namespace ECommerce.Business.Models
 
         [Required]
         [StringLength(100)]
-        public string FullName { get; set; } = string.Empty;
+        public required string FullName { get; set; }
 
-        [Required]
-        [EmailAddress]
-        [StringLength(150)]
-        public string Email { get; set; } = string.Empty;
+        public required string Email { get; set; }
 
-        [Required]
-        public string PasswordHash { get; set; } = string.Empty;
+        public required string PasswordHash { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
