@@ -32,13 +32,26 @@ builder.Services.AddDbContext<ECommerceDbContext>(options =>
 // --------------------------------------------------
 // JWT Authentication
 // --------------------------------------------------
-builder.Services.AddAuthentication("Bearer")
+
+var jwtKey =
+    builder.Configuration["Jwt:Key"];
+
+var jwtIssuer =
+    builder.Configuration["Jwt:Issuer"];
+
+var jwtAudience =
+    builder.Configuration["Jwt:Audience"];
+
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException(
+        "JWT signing key is not configured.");
+}
+
+builder.Services
+    .AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        var jwtKey = builder.Configuration["Jwt:Key"];
-        var jwtIssuer = builder.Configuration["Jwt:Issuer"];
-        var jwtAudience = builder.Configuration["Jwt:Audience"];
-
         options.TokenValidationParameters =
             new TokenValidationParameters
             {
@@ -52,7 +65,7 @@ builder.Services.AddAuthentication("Bearer")
 
                 IssuerSigningKey =
                     new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtKey!))
+                        Encoding.UTF8.GetBytes(jwtKey))
             };
     });
 
@@ -62,6 +75,9 @@ builder.Services.AddAuthentication("Bearer")
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<
+    IBulkProductImportService,
+    BulkProductImportService>();
 // --------------------------------------------------
 // Inventory
 // --------------------------------------------------

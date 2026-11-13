@@ -5,3 +5,24 @@ TestResults/
 .vscode/
 *.user
 *.suo
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Development configuration
+appsettings.Development.json
+appsettings.*.Development.json
+
+# Certificates and keys
+*.pfx
+*.p12
+*.key
+*.pem
+
+# Logs
+*.log
+
+# Node dependencies and builds
+node_modules/
+dist/

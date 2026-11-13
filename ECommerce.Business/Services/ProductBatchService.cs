@@ -4,7 +4,8 @@ using ECommerce.Business.Repositories;
 
 namespace ECommerce.Business.Services
 {
-    public class ProductBatchService : IProductBatchService
+    public class ProductBatchService
+        : IProductBatchService
     {
         private readonly IProductBatchRepository _batchRepository;
         private readonly IProductRepository _productRepository;
@@ -22,7 +23,8 @@ namespace ECommerce.Business.Services
         // --------------------------------------------------
         public async Task<List<ProductBatch>> GetAllBatchesAsync()
         {
-            return await _batchRepository.GetAllBatchesAsync();
+            return await _batchRepository
+                .GetAllBatchesAsync();
         }
 
         // --------------------------------------------------
@@ -78,23 +80,23 @@ namespace ECommerce.Business.Services
         // ADD BATCH
         // --------------------------------------------------
         public async Task<ProductBatch> AddBatchAsync(
-            ProductBatch batch)
+    ProductBatch batch)
         {
             ValidateBatch(batch);
 
             var product =
-                await _productRepository.GetProductByIdAsync(
-                    batch.ProductId);
+                await _productRepository
+                    .GetProductByIdAsync(batch.ProductId);
 
             if (product is null)
             {
                 throw new NotFoundException(
-                    $"Product with ID {batch.ProductId} " +
-                    "was not found.");
+                    $"Product with ID {batch.ProductId} was not found.");
             }
 
             var createdBatch =
-                await _batchRepository.AddBatchAsync(batch);
+                await _batchRepository
+                    .AddBatchAsync(batch);
 
             await SynchronizeProductStockAsync(
                 batch.ProductId);
@@ -106,8 +108,8 @@ namespace ECommerce.Business.Services
         // UPDATE BATCH
         // --------------------------------------------------
         public async Task<ProductBatch> UpdateBatchAsync(
-            int id,
-            ProductBatch batch)
+    int id,
+    ProductBatch batch)
         {
             if (id <= 0)
             {
@@ -115,10 +117,9 @@ namespace ECommerce.Business.Services
                     "Batch ID must be greater than zero.");
             }
 
-            ValidateBatch(batch);
-
             var existingBatch =
-                await _batchRepository.GetBatchByIdAsync(id);
+                await _batchRepository
+                    .GetBatchByIdAsync(id);
 
             if (existingBatch is null)
             {
@@ -126,13 +127,14 @@ namespace ECommerce.Business.Services
                     $"Batch with ID {id} was not found.");
             }
 
-            // Prevent changing the product through batch update.
-            batch.ProductId = existingBatch.ProductId;
+            batch.ProductId =
+                existingBatch.ProductId;
+
+            ValidateBatch(batch);
 
             var updatedBatch =
-                await _batchRepository.UpdateBatchAsync(
-                    id,
-                    batch);
+                await _batchRepository
+                    .UpdateBatchAsync(id, batch);
 
             if (updatedBatch is null)
             {
@@ -149,7 +151,7 @@ namespace ECommerce.Business.Services
         // --------------------------------------------------
         // DELETE BATCH
         // --------------------------------------------------
-        public async Task<bool> DeleteBatchAsync(int id)
+        public async Task DeleteBatchAsync(int id)
         {
             if (id <= 0)
             {
@@ -157,42 +159,40 @@ namespace ECommerce.Business.Services
                     "Batch ID must be greater than zero.");
             }
 
-            var batch =
+            var existingBatch =
                 await _batchRepository.GetBatchByIdAsync(id);
 
-            if (batch is null)
+            if (existingBatch is null)
             {
                 throw new NotFoundException(
                     $"Batch with ID {id} was not found.");
             }
 
             var productId =
-                batch.ProductId;
+                existingBatch.ProductId;
 
             var deleted =
                 await _batchRepository.DeleteBatchAsync(id);
 
             if (!deleted)
             {
-                throw new InvalidOperationException(
-                    "The product batch could not be deleted.");
+                throw new NotFoundException(
+                    $"Batch with ID {id} was not found.");
             }
 
             await SynchronizeProductStockAsync(
                 productId);
-
-            return true;
         }
 
         // --------------------------------------------------
         // SYNCHRONIZE PRODUCT STOCK FROM BATCHES
         // --------------------------------------------------
         private async Task SynchronizeProductStockAsync(
-            int productId)
+    int productId)
         {
             var product =
-                await _productRepository.GetProductByIdAsync(
-                    productId);
+                await _productRepository
+                    .GetProductByIdAsync(productId);
 
             if (product is null)
             {
@@ -202,16 +202,13 @@ namespace ECommerce.Business.Services
 
             var totalStock =
                 await _batchRepository
-                    .GetTotalStockByProductIdAsync(
-                        productId);
-
-            product.StockQuantity =
-                totalStock;
+                    .GetTotalStockByProductIdAsync(productId);
 
             var updatedProduct =
-                await _productRepository.UpdateProductAsync(
-                    productId,
-                    product);
+                await _productRepository
+                    .UpdateStockQuantityAsync(
+                        productId,
+                        totalStock);
 
             if (updatedProduct is null)
             {
@@ -219,7 +216,6 @@ namespace ECommerce.Business.Services
                     $"Product with ID {productId} was not found.");
             }
         }
-
         // --------------------------------------------------
         // COMMON BATCH VALIDATION
         // --------------------------------------------------

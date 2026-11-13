@@ -39,20 +39,23 @@ namespace ECommerce.DataAccess.Repositories
                 .ToListAsync();
         }
         public async Task<List<ProductBatch>>
-    GetAvailableBatchesForProductAsync(int productId)
+    GetAvailableBatchesForProductAsync(
+        int productId)
         {
-            var today = DateTime.UtcNow.Date;
+            var now = DateTime.UtcNow;
 
             return await _context.ProductBatches
-                .Where(b =>
-                    b.ProductId == productId &&
-                    b.IsActive &&
-                    b.Quantity > 0 &&
-                    (!b.ExpiryDate.HasValue ||
-                     b.ExpiryDate.Value.Date >= today))
-                .OrderBy(b =>
-                    b.ExpiryDate ?? DateTime.MaxValue)
-                .ThenBy(b => b.CreatedAt)
+                .Where(batch =>
+                    batch.ProductId == productId &&
+                    batch.IsActive &&
+                    batch.Quantity > 0 &&
+                    (
+                        batch.ExpiryDate == null ||
+                        batch.ExpiryDate > now
+                    ))
+                .OrderBy(batch =>
+                    batch.ExpiryDate ?? DateTime.MaxValue)
+                .ThenBy(batch => batch.CreatedAt)
                 .ToListAsync();
         }
 
@@ -91,16 +94,18 @@ namespace ECommerce.DataAccess.Repositories
         public async Task<int> GetTotalStockByProductIdAsync(
     int productId)
         {
-            var today = DateTime.UtcNow.Date;
+            var now = DateTime.UtcNow;
 
             return await _context.ProductBatches
-                .Where(b =>
-                    b.ProductId == productId &&
-                    b.IsActive &&
-                    b.Quantity > 0 &&
-                    (!b.ExpiryDate.HasValue ||
-                     b.ExpiryDate.Value.Date >= today))
-                .SumAsync(b => b.Quantity);
+                .Where(batch =>
+                    batch.ProductId == productId &&
+                    batch.IsActive &&
+                    batch.Quantity > 0 &&
+                    (
+                        batch.ExpiryDate == null ||
+                        batch.ExpiryDate > now
+                    ))
+                .SumAsync(batch => batch.Quantity);
         }
         public async Task<bool> DeleteBatchAsync(int id)
         {

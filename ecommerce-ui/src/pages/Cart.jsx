@@ -12,6 +12,30 @@ function Cart() {
   const navigate = useNavigate();
 
   // --------------------------------------------------
+  // ADD PRODUCT DETAILS TO CART ITEMS
+  // --------------------------------------------------
+  const enrichCartItems = async (items) => {
+    const enrichedItems = await Promise.all(
+      items.map(async (item) => {
+        try {
+          const productResponse = await api.get(`/Products/${item.productId}`);
+
+          return {
+            ...item,
+            product: productResponse.data,
+          };
+        } catch (error) {
+          console.error(`Unable to load product ${item.productId}:`, error);
+
+          return item;
+        }
+      }),
+    );
+
+    return enrichedItems;
+  };
+
+  // --------------------------------------------------
   // LOAD CART WHEN PAGE OPENS
   // --------------------------------------------------
   useEffect(() => {
@@ -23,8 +47,10 @@ function Cart() {
 
         const response = await api.get("/Cart");
 
+        const enrichedItems = await enrichCartItems(response.data);
+
         if (isMounted) {
-          setCartItems(response.data);
+          setCartItems(enrichedItems);
         }
       } catch (error) {
         console.error("Error loading cart:", error);
@@ -58,12 +84,13 @@ function Cart() {
 
   // --------------------------------------------------
   // REFRESH CART
-  // Used after update/remove operations
   // --------------------------------------------------
   const refreshCart = async () => {
     const response = await api.get("/Cart");
 
-    setCartItems(response.data);
+    const enrichedItems = await enrichCartItems(response.data);
+
+    setCartItems(enrichedItems);
   };
 
   // --------------------------------------------------
@@ -165,7 +192,6 @@ function Cart() {
       <div className="cart-header">
         <div>
           <h1>Shopping Cart</h1>
-
           <p>Review the products in your cart</p>
         </div>
 

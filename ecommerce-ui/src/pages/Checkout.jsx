@@ -16,6 +16,30 @@ function Checkout() {
   const navigate = useNavigate();
 
   // --------------------------------------------------
+  // LOAD PRODUCT DETAILS
+  // --------------------------------------------------
+  const enrichCartItems = async (items) => {
+    const enrichedItems = await Promise.all(
+      items.map(async (item) => {
+        try {
+          const productResponse = await api.get(`/Products/${item.productId}`);
+
+          return {
+            ...item,
+            product: productResponse.data,
+          };
+        } catch (error) {
+          console.error(`Unable to load product ${item.productId}:`, error);
+
+          return item;
+        }
+      }),
+    );
+
+    return enrichedItems;
+  };
+
+  // --------------------------------------------------
   // LOAD CART
   // --------------------------------------------------
   useEffect(() => {
@@ -27,8 +51,10 @@ function Checkout() {
 
         const response = await api.get("/Cart");
 
+        const enrichedItems = await enrichCartItems(response.data);
+
         if (isMounted) {
-          setCartItems(response.data);
+          setCartItems(enrichedItems);
         }
       } catch (error) {
         console.error("Error loading checkout cart:", error);
@@ -70,12 +96,11 @@ function Checkout() {
   }, 0);
 
   // --------------------------------------------------
-  // PLACE ORDER + PAYMENT
+  // PLACE ORDER + CREATE PAYMENT
   // --------------------------------------------------
   const handleCheckout = async () => {
     if (cartItems.length === 0) {
       setError("Your cart is empty. Add products before checkout.");
-
       return;
     }
 
@@ -84,8 +109,7 @@ function Checkout() {
       setError("");
       setSuccess("");
 
-      // STEP 1:
-      // Create order from logged-in user's cart.
+      // STEP 1 - CREATE ORDER
       const orderResponse = await api.post("/Orders");
 
       const order = orderResponse.data;
@@ -94,20 +118,32 @@ function Checkout() {
         throw new Error("Order ID was not returned by the server.");
       }
 
-      // STEP 2:
-      // Process payment for the newly created order.
-      const paymentResponse = await api.post(`/Payment/${order.id}`, {
+      // Always trust backend order total for payment.
+      const orderAmount = Number(order.totalAmount);
+
+      if (!Number.isFinite(orderAmount) || orderAmount <= 0) {
+        throw new Error("Invalid order total returned by the server.");
+      }
+
+      // STEP 2 - CREATE PAYMENT
+      const paymentResponse = await api.post("/Payments", {
+        orderId: order.id,
+        amount: orderAmount,
         paymentMethod,
       });
 
+      const payment = paymentResponse.data;
+
       setSuccess(
-        paymentResponse.data?.message || "Payment successful. Order confirmed.",
+        `Order #${order.id} created successfully. Payment status: ${
+          payment?.status || "Pending"
+        }.`,
       );
 
-      // Order creation clears the cart on the backend.
+      // OrderService clears cart after checkout.
       setCartItems([]);
 
-      // Go to My Orders after a short success message.
+      // Go to My Orders after success.
       setTimeout(() => {
         navigate("/orders");
       }, 1500);

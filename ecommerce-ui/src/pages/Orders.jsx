@@ -10,6 +10,58 @@ function Orders() {
 
   const navigate = useNavigate();
 
+  // --------------------------------------------------
+  // ADD PRODUCT + PAYMENT DETAILS TO ORDERS
+  // --------------------------------------------------
+  const enrichOrders = async (ordersData) => {
+    const enrichedOrders = await Promise.all(
+      ordersData.map(async (order) => {
+        // Load product details
+        const enrichedItems = await Promise.all(
+          (order.orderItems || []).map(async (item) => {
+            try {
+              const productResponse = await api.get(
+                `/Products/${item.productId}`,
+              );
+
+              return {
+                ...item,
+                product: productResponse.data,
+              };
+            } catch (error) {
+              console.error(`Unable to load product ${item.productId}:`, error);
+
+              return item;
+            }
+          }),
+        );
+
+        // Load payment details
+        let payment = null;
+
+        try {
+          const paymentResponse = await api.get(`/Payments/order/${order.id}`);
+
+          payment = paymentResponse.data;
+        } catch (error) {
+          // A missing payment should not break the whole Orders page
+          console.warn(`Unable to load payment for order ${order.id}:`, error);
+        }
+
+        return {
+          ...order,
+          orderItems: enrichedItems,
+          payment,
+        };
+      }),
+    );
+
+    return enrichedOrders;
+  };
+
+  // --------------------------------------------------
+  // LOAD ORDERS
+  // --------------------------------------------------
   useEffect(() => {
     let isMounted = true;
 
@@ -20,8 +72,10 @@ function Orders() {
 
         const response = await api.get("/Orders");
 
+        const enrichedOrders = await enrichOrders(response.data);
+
         if (isMounted) {
-          setOrders(response.data);
+          setOrders(enrichedOrders);
         }
       } catch (error) {
         console.error("Error loading orders:", error);
@@ -53,10 +107,16 @@ function Orders() {
     };
   }, []);
 
+  // --------------------------------------------------
+  // LOADING
+  // --------------------------------------------------
   if (loading) {
     return <div className="orders-message">Loading orders...</div>;
   }
 
+  // --------------------------------------------------
+  // PAGE
+  // --------------------------------------------------
   return (
     <div className="orders-page">
       <div className="orders-header">
@@ -97,13 +157,33 @@ function Orders() {
                   </p>
                 </div>
 
-                <span
-                  className={`order-status ${
-                    order.status ? order.status.toLowerCase() : ""
-                  }`}
-                >
-                  {order.status}
-                </span>
+                <div>
+                  <div>
+                    <strong>Order Status: </strong>
+
+                    <span
+                      className={`order-status ${
+                        order.status ? order.status.toLowerCase() : ""
+                      }`}
+                    >
+                      {order.status || "Unknown"}
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: "8px" }}>
+                    <strong>Payment Status: </strong>
+
+                    <span
+                      className={`payment-status ${
+                        order.payment?.status
+                          ? order.payment.status.toLowerCase()
+                          : ""
+                      }`}
+                    >
+                      {order.payment?.status || "Not Available"}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="order-items">
@@ -138,6 +218,28 @@ function Orders() {
                   ₹{Number(order.totalAmount ?? 0).toLocaleString("en-IN")}
                 </strong>
               </div>
+
+              {order.payment && (
+                <div
+                  style={{
+                    marginTop: "12px",
+                    paddingTop: "12px",
+                    borderTop: "1px solid #ddd",
+                  }}
+                >
+                  <p>
+                    <strong>Payment Method:</strong>{" "}
+                    {order.payment.paymentMethod}
+                  </p>
+
+                  {order.payment.transactionReference && (
+                    <p>
+                      <strong>Transaction Reference:</strong>{" "}
+                      {order.payment.transactionReference}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

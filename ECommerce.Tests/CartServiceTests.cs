@@ -11,6 +11,8 @@ namespace ECommerce.Tests
         private readonly Mock<ICartRepository> _cartRepositoryMock;
         private readonly Mock<IProductRepository> _productRepositoryMock;
         private readonly CartService _cartService;
+        private readonly Mock<IProductBatchRepository>
+    _batchRepositoryMock;
 
         public CartServiceTests()
         {
@@ -20,9 +22,13 @@ namespace ECommerce.Tests
             _productRepositoryMock =
                 new Mock<IProductRepository>();
 
+            _batchRepositoryMock =
+                new Mock<IProductBatchRepository>();
+
             _cartService = new CartService(
                 _cartRepositoryMock.Object,
-                _productRepositoryMock.Object);
+                _productRepositoryMock.Object,
+                _batchRepositoryMock.Object);
         }
 
         [Fact]
@@ -44,7 +50,10 @@ namespace ECommerce.Tests
             _cartRepositoryMock
                 .Setup(r => r.GetCartItemAsync(1, 1))
                 .ReturnsAsync((CartItem?)null);
-
+            _batchRepositoryMock
+    .Setup(r =>
+        r.GetTotalStockByProductIdAsync(1))
+    .ReturnsAsync(10);
             var cartItem = new CartItem
             {
                 Id = 1,
@@ -119,7 +128,10 @@ namespace ECommerce.Tests
             _cartRepositoryMock
                 .Setup(r => r.GetCartItemAsync(1, 1))
                 .ReturnsAsync((CartItem?)null);
-
+            _batchRepositoryMock
+    .Setup(r =>
+        r.GetTotalStockByProductIdAsync(1))
+    .ReturnsAsync(2);
             // Act & Assert
             await Assert.ThrowsAsync<ConflictException>(
                 () => _cartService.AddToCartAsync(
@@ -202,7 +214,10 @@ namespace ECommerce.Tests
                     1,
                     3))
                 .ReturnsAsync(updatedCartItem);
-
+            _batchRepositoryMock
+    .Setup(r =>
+        r.GetTotalStockByProductIdAsync(1))
+    .ReturnsAsync(10);
             // Act
             var result =
                 await _cartService.UpdateCartItemAsync(

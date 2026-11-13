@@ -3,7 +3,12 @@
     <File Path=".gitignore" />
   </Folder>
   <Project Path="ECommerce.API/ECommerce.API.csproj" />
+  <Project Path="ECommerce.ApiGateway/ECommerce.ApiGateway.csproj" Id="571f9aeb-159e-4434-b0fa-3976661a25e6" />
   <Project Path="ECommerce.Business/ECommerce.Business.csproj" />
   <Project Path="ECommerce.DataAccess/ECommerce.DataAccess.csproj" />
+  <Project Path="ECommerce.OrderService/ECommerce.OrderService.csproj" Id="03534de5-4d59-4898-80d2-c14c84b37452" />
+  <Project Path="ECommerce.PaymentService/ECommerce.PaymentService.csproj" Id="7d2a66e1-2ed2-462d-97f4-76264bbb1b14" />
+  <Project Path="ECommerce.ProductService/ECommerce.ProductService.csproj" Id="ca21241a-73f8-4d82-9eb3-d02edfa3366e" />
   <Project Path="ECommerce.Tests/ECommerce.Tests.csproj" />
+  <Project Path="ECommerce.UserService/ECommerce.UserService.csproj" Id="33a861e6-0dbb-4b09-9807-370377f54720" />
 </Solution>

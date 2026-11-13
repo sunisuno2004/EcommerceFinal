@@ -6,7 +6,8 @@ namespace ECommerce.Business.Services
     {
         Task<List<ProductBatch>> GetAllBatchesAsync();
 
-        Task<ProductBatch> GetBatchByIdAsync(int id);
+        Task<ProductBatch> GetBatchByIdAsync(
+            int id);
 
         Task<List<ProductBatch>> GetBatchesByProductIdAsync(
             int productId);
@@ -18,6 +19,7 @@ namespace ECommerce.Business.Services
             int id,
             ProductBatch batch);
 
-        Task<bool> DeleteBatchAsync(int id);
+        Task DeleteBatchAsync(
+            int id);
     }
 }

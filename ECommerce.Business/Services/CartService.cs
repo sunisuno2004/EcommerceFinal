@@ -8,13 +8,16 @@ namespace ECommerce.Business.Services
     {
         private readonly ICartRepository _cartRepository;
         private readonly IProductRepository _productRepository;
+        private readonly IProductBatchRepository _batchRepository;
 
         public CartService(
-            ICartRepository cartRepository,
-            IProductRepository productRepository)
+    ICartRepository cartRepository,
+    IProductRepository productRepository,
+    IProductBatchRepository batchRepository)
         {
             _cartRepository = cartRepository;
             _productRepository = productRepository;
+            _batchRepository = batchRepository;
         }
 
         // --------------------------------------------------
@@ -58,7 +61,10 @@ namespace ECommerce.Business.Services
                 throw new NotFoundException(
                     $"Product with ID {productId} was not found.");
             }
-
+            var availableStock =
+    await _batchRepository
+        .GetTotalStockByProductIdAsync(
+            productId);
             var existingItem =
                 await _cartRepository.GetCartItemAsync(
                     userId,
@@ -72,10 +78,10 @@ namespace ECommerce.Business.Services
                 var newQuantity =
                     existingItem.Quantity + quantity;
 
-                if (newQuantity > product.StockQuantity)
+                if (newQuantity > availableStock)
                 {
                     throw new ConflictException(
-                        $"Only {product.StockQuantity} item(s) " +
+                        $"Only {availableStock} item(s) " +
                         $"are available for product '{product.Name}'.");
                 }
 
@@ -97,13 +103,12 @@ namespace ECommerce.Business.Services
             // --------------------------------------------------
             // NEW CART ITEM
             // --------------------------------------------------
-            if (quantity > product.StockQuantity)
+            if (quantity > availableStock)
             {
                 throw new ConflictException(
-                    $"Only {product.StockQuantity} item(s) " +
+                    $"Only {availableStock} item(s) " +
                     $"are available for product '{product.Name}'.");
             }
-
             var cartItem = new CartItem
             {
                 UserId = userId,
@@ -135,7 +140,10 @@ namespace ECommerce.Business.Services
             var product =
                 await _productRepository.GetProductByIdAsync(
                     productId);
-
+            var availableStock =
+    await _batchRepository
+        .GetTotalStockByProductIdAsync(
+            productId);
             if (product is null)
             {
                 throw new NotFoundException(
@@ -154,11 +162,11 @@ namespace ECommerce.Business.Services
                     "was not found in the cart.");
             }
 
-            if (quantity > product.StockQuantity)
+            if (quantity > availableStock)
             {
                 throw new ConflictException(
-                    $"Only {product.StockQuantity} item(s) " +
-                    $"are available for product '{product.Name}'.");
+    $"Only {availableStock} item(s) " +
+    $"are available for product '{product.Name}'.");
             }
 
             var updatedItem =

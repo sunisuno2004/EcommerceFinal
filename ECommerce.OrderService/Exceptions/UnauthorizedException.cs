@@ -1,0 +1,10 @@
+﻿namespace ECommerce.OrderService.Exceptions
+{
+    public class UnauthorizedException : Exception
+    {
+        public UnauthorizedException(string message)
+            : base(message)
+        {
+        }
+    }
+}

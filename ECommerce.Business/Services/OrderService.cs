@@ -135,18 +135,15 @@ namespace ECommerce.Business.Services
                     }
 
                     var remainingStock =
-                        await _batchRepository
-                            .GetTotalStockByProductIdAsync(
-                                product.Id);
-
-                    product.StockQuantity =
-                        remainingStock;
+    await _batchRepository
+        .GetTotalStockByProductIdAsync(
+            product.Id);
 
                     var updatedProduct =
                         await _productRepository
-                            .UpdateProductAsync(
+                            .UpdateStockQuantityAsync(
                                 product.Id,
-                                product);
+                                remainingStock);
 
                     if (updatedProduct is null)
                     {

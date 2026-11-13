@@ -16,12 +16,16 @@ namespace ECommerce.API.Controllers
     {
         private readonly IProductService _productService;
         private readonly ILogger<ProductsController> _logger;
+        private readonly IBulkProductImportService _bulkProductImportService;
 
         public ProductsController(
-            IProductService productService,
-            ILogger<ProductsController> logger)
+     IProductService productService,
+     IBulkProductImportService bulkProductImportService,
+     ILogger<ProductsController> logger)
         {
             _productService = productService;
+            _bulkProductImportService =
+                bulkProductImportService;
             _logger = logger;
         }
 
@@ -90,7 +94,7 @@ namespace ECommerce.API.Controllers
                 Name = dto.Name,
                 Description = dto.Description,
                 Price = dto.Price,
-                StockQuantity = dto.StockQuantity
+                StockQuantity = 0
             };
 
             var addedProduct =
@@ -128,8 +132,7 @@ namespace ECommerce.API.Controllers
             {
                 Name = dto.Name,
                 Description = dto.Description,
-                Price = dto.Price,
-                StockQuantity = dto.StockQuantity
+                Price = dto.Price
             };
 
             var updatedProduct =
@@ -173,21 +176,27 @@ namespace ECommerce.API.Controllers
         // BULK PRODUCT UPLOAD
         // POST: api/Products/bulk-upload
         // ADMIN ONLY
+        //
+        // IMPORTANT:
+        // Bulk upload creates product master data only.
+        // Inventory must be created using ProductBatch.
         // --------------------------------------------------
         [HttpPost("bulk-upload")]
         [Authorize(Roles = "Admin")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> BulkUpload(
-            IFormFile file)
+           IFormFile file)
         {
-            if (file is null || file.Length == 0)
+            if (file is null ||
+                file.Length == 0)
             {
                 throw new ValidationException(
                     "Please upload an Excel file.");
             }
 
             var extension =
-                Path.GetExtension(file.FileName);
+                Path.GetExtension(
+                    file.FileName);
 
             if (!string.Equals(
                     extension,
@@ -198,184 +207,12 @@ namespace ECommerce.API.Controllers
                     "Only .xlsx Excel files are supported.");
             }
 
-            var products = new List<Product>();
-            var errors = new List<string>();
-
             using var stream =
                 file.OpenReadStream();
 
-            using var workbook =
-                new XLWorkbook(stream);
-
-            var worksheet =
-                workbook.Worksheets.FirstOrDefault();
-
-            if (worksheet is null)
-            {
-                throw new ValidationException(
-                    "Excel file does not contain a worksheet.");
-            }
-
-            var lastRow =
-                worksheet.LastRowUsed()?.RowNumber() ?? 0;
-
-            if (lastRow < 2)
-            {
-                throw new ValidationException(
-                    "Excel file does not contain product data.");
-            }
-
-            // Expected Excel columns:
-            // Name | Description | Price | StockQuantity
-
-            var headers =
-                new Dictionary<string, int>(
-                    StringComparer.OrdinalIgnoreCase);
-
-            var headerRow =
-                worksheet.Row(1);
-
-            foreach (var cell in headerRow.CellsUsed())
-            {
-                var header =
-                    cell.GetString().Trim();
-
-                if (!string.IsNullOrWhiteSpace(header))
-                {
-                    headers[header] =
-                        cell.Address.ColumnNumber;
-                }
-            }
-
-            if (!headers.ContainsKey("Name") ||
-                !headers.ContainsKey("Description") ||
-                !headers.ContainsKey("Price") ||
-                !headers.ContainsKey("StockQuantity"))
-            {
-                throw new ValidationException(
-                    "Excel must contain these columns: " +
-                    "Name, Description, Price, StockQuantity.");
-            }
-
-            for (
-                int rowNumber = 2;
-                rowNumber <= lastRow;
-                rowNumber++)
-            {
-                var row =
-                    worksheet.Row(rowNumber);
-
-                var name =
-                    row.Cell(headers["Name"])
-                        .GetString()
-                        .Trim();
-
-                var description =
-                    row.Cell(headers["Description"])
-                        .GetString()
-                        .Trim();
-
-                var priceText =
-                    row.Cell(headers["Price"])
-                        .GetString()
-                        .Trim();
-
-                var stockText =
-                    row.Cell(headers["StockQuantity"])
-                        .GetString()
-                        .Trim();
-
-                // Ignore completely empty rows
-                if (string.IsNullOrWhiteSpace(name) &&
-                    string.IsNullOrWhiteSpace(priceText) &&
-                    string.IsNullOrWhiteSpace(stockText))
-                {
-                    continue;
-                }
-
-                if (string.IsNullOrWhiteSpace(name))
-                {
-                    errors.Add(
-                        $"Row {rowNumber}: " +
-                        "Product name is required.");
-
-                    continue;
-                }
-
-                if (!decimal.TryParse(
-                        priceText,
-                        NumberStyles.Any,
-                        CultureInfo.InvariantCulture,
-                        out var price))
-                {
-                    errors.Add(
-                        $"Row {rowNumber}: " +
-                        $"Invalid price for '{name}'.");
-
-                    continue;
-                }
-
-                if (price <= 0)
-                {
-                    errors.Add(
-                        $"Row {rowNumber}: " +
-                        "Price must be greater than zero.");
-
-                    continue;
-                }
-
-                if (!int.TryParse(
-                        stockText,
-                        out var stockQuantity))
-                {
-                    errors.Add(
-                        $"Row {rowNumber}: " +
-                        $"Invalid stock quantity for '{name}'.");
-
-                    continue;
-                }
-
-                if (stockQuantity < 0)
-                {
-                    errors.Add(
-                        $"Row {rowNumber}: " +
-                        "Stock quantity cannot be negative.");
-
-                    continue;
-                }
-
-                products.Add(
-                    new Product
-                    {
-                        Name = name,
-
-                        Description =
-                            string.IsNullOrWhiteSpace(description)
-                                ? null
-                                : description,
-
-                        Price = price,
-
-                        StockQuantity =
-                            stockQuantity
-                    });
-            }
-
-            if (errors.Count > 0)
-            {
-                throw new ValidationException(
-                    "Excel contains invalid data. " +
-                    string.Join(" ", errors));
-            }
-
-            if (products.Count == 0)
-            {
-                throw new ValidationException(
-                    "No valid products found in the Excel file.");
-            }
-
             var addedProducts =
-                await _productService.AddProductsAsync(products);
+                await _bulkProductImportService
+                    .ImportAsync(stream);
 
             _logger.LogInformation(
                 "{Count} products uploaded successfully.",
@@ -384,13 +221,15 @@ namespace ECommerce.API.Controllers
             return Ok(new
             {
                 message =
-                    "Products uploaded successfully.",
+                    "Products uploaded successfully. " +
+                    "Inventory must be added using product batches.",
 
                 totalProductsAdded =
                     addedProducts.Count,
 
                 products =
-                    addedProducts.Select(MapToProductDto)
+                    addedProducts.Select(
+                        MapToProductDto)
             });
         }
 

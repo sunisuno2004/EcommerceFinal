@@ -47,7 +47,7 @@ namespace ECommerce.DataAccess.Repositories
             existingProduct.Name = product.Name;
             existingProduct.Description = product.Description;
             existingProduct.Price = product.Price;
-            existingProduct.StockQuantity = product.StockQuantity;
+           
 
             await _context.SaveChangesAsync();
 
@@ -59,6 +59,24 @@ namespace ECommerce.DataAccess.Repositories
             await _context.SaveChangesAsync();
 
             return products;
+        }
+        public async Task<Product?> UpdateStockQuantityAsync(
+    int productId,
+    int stockQuantity)
+        {
+            var product =
+                await _context.Products.FindAsync(productId);
+
+            if (product is null)
+            {
+                return null;
+            }
+
+            product.StockQuantity = stockQuantity;
+
+            await _context.SaveChangesAsync();
+
+            return product;
         }
         public async Task<bool> DeleteProductAsync(int id)
         {

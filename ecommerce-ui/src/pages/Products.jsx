@@ -8,10 +8,38 @@ function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+
   const [cartMessage, setCartMessage] = useState("");
   const [addingProductId, setAddingProductId] = useState(null);
+  const [cartCount, setCartCount] = useState(0);
 
   const navigate = useNavigate();
+
+  // --------------------------------------------------
+  // LOAD CART COUNT
+  // --------------------------------------------------
+  const loadCartCount = async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      setCartCount(0);
+      return;
+    }
+
+    try {
+      const response = await api.get("/Cart");
+
+      const totalItems = response.data.reduce(
+        (total, item) => total + item.quantity,
+        0,
+      );
+
+      setCartCount(totalItems);
+    } catch (error) {
+      console.error("Unable to load cart count:", error);
+      setCartCount(0);
+    }
+  };
 
   // --------------------------------------------------
   // LOAD PRODUCTS
@@ -39,6 +67,7 @@ function Products() {
     };
 
     loadProducts();
+    loadCartCount();
   }, []);
 
   // --------------------------------------------------
@@ -51,7 +80,6 @@ function Products() {
 
     if (!token) {
       setCartMessage("Please login before adding products to your cart.");
-
       return;
     }
 
@@ -64,6 +92,8 @@ function Products() {
       });
 
       setCartMessage(`${product.name} added to cart successfully.`);
+
+      await loadCartCount();
     } catch (error) {
       console.error("Error adding product to cart:", error);
 
@@ -128,7 +158,8 @@ function Products() {
 
         <div className="products-header-actions">
           <div className="product-count">
-            {filteredProducts.length} Products
+            {filteredProducts.length}{" "}
+            {filteredProducts.length === 1 ? "Product" : "Products"}
           </div>
 
           <button
@@ -136,15 +167,13 @@ function Products() {
             className="view-cart-button"
             onClick={() => navigate("/cart")}
           >
-            View Cart
+            View Cart ({cartCount})
           </button>
         </div>
       </div>
 
-      {/* CART SUCCESS / ERROR MESSAGE */}
       {cartMessage && <div className="cart-message">{cartMessage}</div>}
 
-      {/* PRODUCTS */}
       {filteredProducts.length === 0 ? (
         <div className="products-message">No products found.</div>
       ) : (
@@ -176,7 +205,6 @@ function Products() {
                   </span>
                 </div>
 
-                {/* ADD TO CART */}
                 <button
                   type="button"
                   className="add-cart-button"
